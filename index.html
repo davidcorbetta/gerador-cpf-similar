@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de CPFs Similares</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            padding: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gerador de CPFs Similares</h1>
+        <form id="cpfForm">
+            <label for="cpfInput">Digite o CPF base (sem pontos e traços):</label>
+            <input type="text" id="cpfInput" maxlength="11" required>
+            <button type="submit">Gerar CPFs Similares</button>
+        </form>
+        <h2>CPFs Similares:</h2>
+        <ul id="cpfList"></ul>
+    </div>
+
+    <script>
+        const FONETICO = {
+            '0': 'zero',
+            '1': 'um',
+            '2': 'dois',
+            '3': 'três',
+            '4': 'quatro',
+            '5': 'cinco',
+            '6': 'seis',
+            '7': 'sete',
+            '8': 'oito',
+            '9': 'nove'
+        };
+
+        function calcularDigitos(cpfBase) {
+            function calcularDigito(digits, peso) {
+                let soma = digits.split('').reduce((acc, d, idx) => acc + parseInt(d) * peso[idx], 0);
+                let resto = soma % 11;
+                return resto < 2 ? '0' : (11 - resto).toString();
+            }
+
+            let peso1 = Array.from({ length: 9 }, (_, i) => 10 - i);
+            let peso2 = Array.from({ length: 10 }, (_, i) => 11 - i);
+            let digito1 = calcularDigito(cpfBase, peso1);
+            let digito2 = calcularDigito(cpfBase + digito1, peso2);
+            return digito1 + digito2;
+        }
+
+        function similaridadeFonetica(cpf1, cpf2) {
+            function fonetico(cpf) {
+                return cpf.split('').map(digit => FONETICO[digit] || '').join(' ');
+            }
+
+            let cpf1Fonetico = fonetico(cpf1);
+            let cpf2Fonetico = fonetico(cpf2);
+            let similaridade = 0;
+
+            let cpf1Words = cpf1Fonetico.split(' ');
+            let cpf2Words = cpf2Fonetico.split(' ');
+
+            cpf1Words.forEach((word, i) => {
+                if (cpf2Words[i] && word === cpf2Words[i]) {
+                    similaridade += 1;
+                }
+            });
+
+            return similaridade / cpf1Words.length;
+        }
+
+        function gerarCpfDiferente(cpfBase) {
+            cpfBase = cpfBase.slice(0, 9) + calcularDigitos(cpfBase.slice(0, 9));
+            let cpfsGerados = new Set();
+
+            for (let i = 0; i < 11; i++) {
+                for (let d = 0; d <= 9; d++) {
+                    let novoCpf = cpfBase.slice(0, i) + d + cpfBase.slice(i + 1);
+                    if (novoCpf !== cpfBase) {
+                        let cpfCompleto = novoCpf.slice(0, 9) + calcularDigitos(novoCpf.slice(0, 9));
+                        if (cpfCompleto !== novoCpf) {
+                            cpfsGerados.add(cpfCompleto);
+                        }
+                    }
+                }
+            }
+
+            let cpfsOrdenados = Array.from(cpfsGerados).sort((a, b) => similaridadeFonetica(cpfBase, b) - similaridadeFonetica(cpfBase, a));
+
+            return cpfsOrdenados;
+        }
+
+        document.getElementById('cpfForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const cpfBase = document.getElementById('cpfInput').value;
+
+            if (cpfBase.length !== 11) {
+                alert('O CPF deve ter 11 dígitos.');
+                return;
+            }
+
+            const cpfsGerados = gerarCpfDiferente(cpfBase);
+
+            const cpfList = document.getElementById('cpfList');
+            cpfList.innerHTML = '';
+
+            cpfsGerados.slice(0, 10).forEach((cpf, idx) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)} ${idx + 1}° (similaridade fonética: ${(similaridadeFonetica(cpfBase, cpf) * 100).toFixed(2)})`;
+                cpfList.appendChild(listItem);
+            });
+        });
+    </script>
+</body>
+</html>
